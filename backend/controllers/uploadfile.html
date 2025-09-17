@@ -1,0 +1,381 @@
+ <!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Home Page Form</title>
+</head>
+<body>
+  <h2>Submit Home Page Content</h2>
+  <form action="/addHomePage" method="POST" enctype="multipart/form-data">
+    <label>Hero Title:</label><br>
+    <input type="text" name="heroTitle" required><br><br>
+
+    <label>Hero SubTitle:</label><br>
+    <input type="text" name="heroSubTitle" required><br><br>
+
+    <label>Hero Background Image:</label><br>
+    <input type="file" name="heroBgImage" accept="image/*" required><br><br>
+
+    <label>After Hero Description:</label><br>
+    <textarea name="afterHeroDesc" required></textarea><br><br>
+
+    <label>Making Image:</label><br>
+    <input type="file" name="makingImage" accept="image/*" required><br><br>
+
+    <label>Making Title:</label><br>
+    <input type="text" name="makingTitle" required><br><br>
+
+    <label>Making Description:</label><br>
+    <textarea name="makingDesc" required></textarea><br><br>
+
+    <label>Promise Image:</label><br>
+    <input type="file" name="promiseImage" accept="image/*" required><br><br>
+
+    <label>Promise Description:</label><br>
+    <textarea name="promiseDesc" required></textarea><br><br>
+
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>  -->
+
+
+
+
+
+<!-- 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Vehicle</title>
+</head>
+<body>
+  <h1>Add Vehicle</h1>
+  <form action="/seller/addVehicle" method="POST" enctype="multipart/form-data">
+    <label>User ID: <input type="text" name="userId" required></label><br><br>
+    <label>VIN: <input type="text" name="vin" required></label><br><br>
+    <label>Year: <input type="number" name="year" required></label><br><br>
+    <label>Make: <input type="text" name="make" required></label><br><br>
+    <label>Model: <input type="text" name="model" required></label><br><br>
+    <label>Series: <input type="text" name="series"></label><br><br>
+    <label>Body Style: <input type="text" name="bodyStyle"></label><br><br>
+    <label>Engine: <input type="text" name="engine"></label><br><br>
+    <label>Transmission: <input type="text" name="transmission"></label><br><br>
+    <label>Drive Type: <input type="text" name="driveType"></label><br><br>
+    <label>Fuel Type: <input type="text" name="fuelType"></label><br><br>
+    <label>Color: <input type="text" name="color"></label><br><br>
+    <label>Mileage: <input type="number" name="mileage"></label><br><br>
+    <label>Vehicle Condition: <input type="text" name="vehicleCondition" required></label><br><br>
+    <label>Keys Available:
+      <select name="keysAvailable">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+    </label><br><br>
+    <label>Location ID: <input type="text" name="locationId" required></label><br><br>
+    <label>Sale Status:
+      <select name="saleStatus">
+        <option value="upcoming">Upcoming</option>
+        <option value="live">Live</option>
+        <option value="sold">Sold</option>
+      </select>
+    </label><br><br>
+    <label>Auction Date: <input type="date" name="auctionDate"></label><br><br>
+    <label>Current Bid: <input type="number" step="0.01" name="currentBid"></label><br><br>
+    <label>Buy Now Price: <input type="number" step="0.01" name="buyNowPrice"></label><br><br>
+    <label>Certify Status: <input type="text" name="certifyStatus"></label><br><br>
+
+    <hr>
+    <label>Vehicle Images (Max 25): <input type="file" name="image" accept="image/*" multiple></label><br><br>
+
+    <button type="submit">Add Vehicle</button>
+  </form>
+</body>
+</html>  -->
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register With Profile Picture</title>
+</head>
+<body>
+  <h2>Register New User</h2>
+  <form action="/register" method="POST" enctype="multipart/form-data">
+    <label>Name:</label><br />
+    <input type="text" name="name" value="John Doe" required /><br /><br />
+
+    <label>Contact:</label><br />
+    <input type="text" name="contact" value="+1-202-555-0143" required /><br /><br />
+
+    <label>CNIC:</label><br />
+    <input type="text" name="cnic" value="12345-6789012-3" required /><br /><br />
+
+    <label>Address:</label><br />
+    <input type="text" name="address" value="123 Elm Street, Springfield" required /><br /><br />
+
+    <label>Postcode:</label><br />
+    <input type="text" name="postcode" value="90210" required /><br /><br />
+
+    <label>Email:</label><br />
+    <input type="email" name="email" value="johndoe@example.com" required /><br /><br />
+
+    <label>Password:</label><br />
+    <input type="password" name="password" value="SecureP@ssw0rd!" required /><br /><br />
+
+    <label>Role:</label><br />
+    <select name="role">
+      <option value="seller">seller</option>
+      <option value="admin" selected>Admin</option>
+      <option value="customer">customer</option>
+    </select><br /><br />
+
+    <label>Profile Picture:</label><br />
+    <input type="file" name="image" accept="image/*" required /><br /><br />
+
+    <button type="submit">Register</button>
+  </form>
+</body>
+</html>
+
+
+ -->
+
+
+ <!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Brand</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 50px auto;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 15px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Add New Brand</h2>
+  <form action="/admin/addBrand" method="POST" enctype="multipart/form-data">
+    <label for="brandName">Brand Name:</label>
+    <input type="text" id="brandName" name="brandName" required>
+
+    <label for="logo">Logo Image:</label>
+    <input type="file" id="logo" name="logo" accept="image/*" required>
+
+    <button type="submit">Submit</button>
+  </form>
+
+</body>
+</html>  -->
+
+<!-- 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Brand</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Update Brand</h1>
+    <form id="updateBrandForm">
+        <div class="form-group">
+            <label for="id">Brand ID to Update:</label>
+            <input type="text" id="id" name="id" required>
+        </div>
+        <div class="form-group">
+            <label for="brandName">New Brand Name:</label>
+            <input type="text" id="brandName" name="brandName" required>
+        </div>
+        <div class="form-group">
+            <label for="logo">New Logo (optional):</label>
+            <input type="file" id="logo" name="logo" accept="image/*">
+        </div>
+        <button type="submit">Update Brand</button>
+    </form>
+    
+    <div id="response"></div>
+
+    <script>
+        document.getElementById('updateBrandForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('id').value;
+            const brandName = document.getElementById('brandName').value;
+            const logoFile = document.getElementById('logo').files[0];
+            
+            const responseDiv = document.getElementById('response');
+            responseDiv.innerHTML = '';
+            responseDiv.className = '';
+            
+            if (!id || !brandName) {
+                responseDiv.textContent = 'ID and Brand Name are required';
+                responseDiv.className = 'error';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('brandName', brandName);
+            if (logoFile) {
+                formData.append('logo', logoFile);
+            }
+            
+            try {
+                const response = await fetch(`/admin/updateBrand/${id}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.innerHTML = `
+                        <p><strong>Success!</strong></p>
+                        <p>Updated brand: ${result.data.brandName}</p>
+                        ${result.data.logo ? `<p>Logo path: ${result.data.logo}</p>` : ''}
+                    `;
+                    responseDiv.className = 'success';
+                } else {
+                    responseDiv.textContent = `Error: ${result.message || 'Failed to update brand'}`;
+                    responseDiv.className = 'error';
+                }
+            } catch (error) {
+                responseDiv.textContent = `Network error: ${error.message}`;
+                responseDiv.className = 'error';
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>  -->
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Bidding Test</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Live Bidding Room</h1>
+
+  <div>
+    <label for="vehicleId">Vehicle ID:</label>
+    <input type="text" id="vehicleId" value="1" />
+    <button id="joinBtn">Join Room</button>
+  </div>
+
+  <h2>Bid Updates</h2>
+  <ul id="bids"></ul>
+
+  <script>
+    // 1. Connect to backend (adjust port if needed)
+    const socket = io("http://localhost:3001"); 
+
+    // 2. Join room on button click
+    document.getElementById("joinBtn").addEventListener("click", () => {
+      const vehicleId = document.getElementById("vehicleId").value;
+      socket.emit("joinVehicleRoom", { vehicleId });
+      console.log("Joined room for vehicle:", vehicleId);
+    });
+
+    // 3. Listen for bid updates
+    socket.on("bidUpdate", (data) => {
+      console.log("New bid update:", data);
+
+      const bidsList = document.getElementById("bids");
+      const li = document.createElement("li");
+      li.textContent = `Vehicle ${data.vehicleId}: ${data.latestBid.name} bid $${data.latestBid.yourOffer}`;
+      bidsList.prepend(li); // newest on top
+    });
+
+    // 4. Handle disconnects
+    socket.on("disconnect", () => {
+      console.log("Disconnected from server");
+    });
+  </script>
+</body>
+</html>

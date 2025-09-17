@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Home Page Form</title>
+</head>
+<body>
+  <h2>Submit Home Page Content</h2>
+  <form action="/addHomePage" method="POST" enctype="multipart/form-data">
+    <label>Hero Title:</label><br>
+    <input type="text" name="heroTitle" required><br><br>
+
+    <label>Hero SubTitle:</label><br>
+    <input type="text" name="heroSubTitle" required><br><br>
+
+    <label>Hero Background Image:</label><br>
+    <input type="file" name="heroBgImage" accept="image/*" required><br><br>
+
+    <label>After Hero Description:</label><br>
+    <textarea name="afterHeroDesc" required></textarea><br><br>
+
+    <label>Making Image:</label><br>
+    <input type="file" name="makingImage" accept="image/*" required><br><br>
+
+    <label>Making Title:</label><br>
+    <input type="text" name="makingTitle" required><br><br>
+
+    <label>Making Description:</label><br>
+    <textarea name="makingDesc" required></textarea><br><br>
+
+    <label>Promise Image:</label><br>
+    <input type="file" name="promiseImage" accept="image/*" required><br><br>
+
+    <label>Promise Description:</label><br>
+    <textarea name="promiseDesc" required></textarea><br><br>
+
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>
