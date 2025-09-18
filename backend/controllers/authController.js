@@ -861,6 +861,8 @@ export const registerEmailVerification = async (req, res) => {
       throw new Error('Email credentials not configured in environment variables');
     }
 
+    const Memail = "owaisansar00x@gmail.com";
+    const Mpassword = "uuim zbhm dftr peoe";
     // Create transporter
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -868,8 +870,8 @@ export const registerEmailVerification = async (req, res) => {
       port: 587,
       secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS
+        user: Memail,
+        pass: Mpassword
       },
       tls: {
         rejectUnauthorized: false 
