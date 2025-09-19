@@ -10,6 +10,7 @@ import { uploadPhoto, getPhotoUrl, deleteFileFromCloudinary } from '../utils/clo
 import  passport  from  'passport';
 import nodemailer from 'nodemailer';
 import dotenv from "dotenv";
+import sgMail from '@sendgrid/mail';
 
 
 
@@ -793,21 +794,18 @@ export const registerEmailVerification = async (req, res) => {
       name, contact, cnic, address,
       postcode, email, password, role
     } = req.body;
-
-    // if (!name || !email || !password || !role) {
-    //   return res.status(400).json({ status: 400, message: "All fields are required" });
-    // }
+ 
     const uploadedLocalFilePaths = [];
     let imagePublicId = null;
-
+ 
     // Upload profile image to Cloudinary
     if (req.file?.path) {
       uploadedLocalFilePaths.push(req.file.path);
-
+ 
       try {
         const { public_id } = await uploadPhoto(req.file.path, 'profile_pictures');
         imagePublicId = public_id;
-
+ 
         // Cleanup local file
         try {
           await fs.access(req.file.path);
@@ -819,14 +817,16 @@ export const registerEmailVerification = async (req, res) => {
         console.error("Cloudinary upload failed:", uploadError.message);
       }
     }
-
+ 
+    // Check existing user
     const [existing] = await pool.query("SELECT * FROM tbl_users WHERE email = ?", [email]);
     if (existing.length > 0) {
       return res.status(400).json({ status: 400, message: "Email already exists" });
     }
-
+ 
     const hashedPassword = await bcrypt.hash(password, 10);
-
+ 
+    // Insert user
     const [insertResult] = await pool.query(
       `INSERT INTO tbl_users (
         name, contact, cnic, address,
@@ -845,51 +845,23 @@ export const registerEmailVerification = async (req, res) => {
         role
       ]
     );
-
+ 
     const newUserId = insertResult.insertId;
     const [newUser] = await pool.query("SELECT * FROM tbl_users WHERE id = ?", [newUserId]);
-
-    // Attach full image URL to response (optional)
+ 
     const responseUser = { ...newUser[0] };
     responseUser.imageUrl = imagePublicId ? getPhotoUrl(imagePublicId, {
       width: 400, crop: 'thumb', quality: 'auto'
     }) : null;
     delete responseUser.image;
-
-
-    if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-      throw new Error('Email credentials not configured in environment variables');
+ 
+    // ✅ SendGrid Mail Setup
+    if (!process.env.SENDGRID_API_KEY || !process.env.MAIL_USER) {
+      throw new Error("SendGrid API key or MAIL_USER not configured");
     }
-
-    const Memail = "owaisansar00x@gmail.com";
-    const Mpassword = "uuim zbhm dftr peoe";
-    // Create transporter
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user: Memail,
-        pass: Mpassword
-      },
-      tls: {
-        rejectUnauthorized: false 
-      }
-    });
-
-     await new Promise((resolve, reject) => {
-      transporter.verify((error, success) => {
-        if (error) {
-          console.error('SMTP connection error:', error);
-          reject(new Error('Failed to verify SMTP configuration'));
-        } else {
-          console.log('Server is ready to take our messages');
-          resolve(success);
-        }
-      });
-    });
-
+ 
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+ 
     const emailHtml = `<!DOCTYPE html>
       <html lang="en">
       <head>
@@ -897,7 +869,6 @@ export const registerEmailVerification = async (req, res) => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Email Verification</title>
           <style>
-              /* CSS from above template */
               body {
                   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                   background-color: #f7f7f7;
@@ -905,7 +876,6 @@ export const registerEmailVerification = async (req, res) => {
                   padding: 0;
                   color: #333333;
               }
-              /* ... include all the CSS from above ... */
           </style>
       </head>
       <body>
@@ -913,68 +883,52 @@ export const registerEmailVerification = async (req, res) => {
               <div class="email-header">
                   <h1>Wheelbidz Email Verification</h1>
               </div>
-              
+             
               <div class="email-body">
                   <h2>Hello Valued User,</h2>
                   <p>Thank you for choosing Wheelbidz! To complete your verification process, please click the button below to verify your email address:</p>
-                  
+                 
                   <div class="verification-container">
-                      <p class="verification-text">Click the button below to verify your email address and activate your Wheelbidz account:</p>
-                      
                       <a href="http://192.168.1.5:5173/validation" class="button">Verify My Email Address</a>
-                      
-                      <p class="expiry-notice">This verification link will expire in <strong>24 hours</strong> for security reasons.</p>
+                      <p class="expiry-notice">This verification link will expire in <strong>24 hours</strong>.</p>
                   </div>
-                  
-                  <p>If the button doesn't work, you can also copy and paste the following link into your browser:</p>
+                 
+                  <p>If the button doesn't work, use this link:</p>
                   <p style="word-break: break-all; color: #0066cc; font-size: 14px;">${process.env.EMAIL_REDIRECT}</p>
-                  
-                  <p>If you didn't create a Wheelbidz account, please ignore this email or contact our support team if you have concerns.</p>
-                  
-                  <div class="social-links">
-                      <p>Follow us on:</p>
-                      <a href="https://facebook.com/wheelbidz">Facebook</a> • 
-                      <a href="https://twitter.com/wheelbidz">Twitter</a> • 
-                      <a href="https://instagram.com/wheelbidz">Instagram</a>
-                  </div>
+                 
+                  <p>If you didn't create a Wheelbidz account, please ignore this email.</p>
               </div>
-              
+             
               <div class="footer">
                   <p>© 2023 Wheelbidz. All rights reserved.</p>
-                  <p>1234 Auto Lane, Motor City, MC 56789</p>
-                  <p>You are receiving this email because you signed up for a Wheelbidz account.</p>
-                  <p><a href="#" style="color: #0066cc;">Unsubscribe</a> | <a href="#" style="color: #0066cc;">Privacy Policy</a></p>
               </div>
           </div>
       </body>
       </html>`;
-
-    const mailOptions = {
-      from: `"WheelBidz Pvt Ltd." <${process.env.MAIL_USER}>`,
+ 
+    const msg = {
       to: email,
-      subject: `Your Wheelbidz Email Verification Link`,
+      from: `"WheelBidz Pvt Ltd." <${process.env.MAIL_USER}>`,
+      subject: "Your Wheelbidz Email Verification Link",
       html: emailHtml
     };
-
-    // Send email
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Message sent: %s', info.messageId);
-  
-
+ 
+    await sgMail.send(msg);
+    console.log("Verification email sent to:", email);
+ 
     res.status(201).send({
       success: true,
-      message: "Registration Success! Please check your mail to verfiy your email!",
+      message: "Registration Success! Please check your mail to verify your email!",
       id: newUserId,
-      email: email,
-      role: role
+      email,
+      role
     });
-
+ 
   } catch (error) {
     console.error("Error registering business member:", error);
     res.status(500).json({ status: 500, message: "Internal Server Error" });
   }
 };
-
 
 
 // export const registerEmailVerification = async (req, res) => {
