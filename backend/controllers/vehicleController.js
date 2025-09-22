@@ -314,20 +314,21 @@ export const getVehicles = async (req, res) => {
       minPrice,
       color,
       search,
+      sortType,
     } = req.query;
-
+ 
     const defaultLimit = 100000000000;
     const defaultPage = 1;
     const entry = parseInt(req.query.entry) || defaultLimit;
     const page = parseInt(req.query.page) || defaultPage;
     const limit = Math.max(1, entry);
     const offset = (Math.max(1, page) - 1) * limit;
-
+ 
     let query = `SELECT * FROM tbl_vehicles WHERE 1=1 AND vehicleStatus = 'Y'`;
     let countQuery = `SELECT COUNT(*) as total FROM tbl_vehicles WHERE 1=1 AND vehicleStatus = 'Y'`;
     const params = [];
     const countParams = [];
-
+ 
     if (auctionDateStart && auctionDateEnd) {
       query += ` AND auctionDate BETWEEN ? AND ?`;
       countQuery += ` AND auctionDate BETWEEN ? AND ?`;
@@ -339,14 +340,14 @@ export const getVehicles = async (req, res) => {
       params.push(auctionDate);
       countParams.push(auctionDate);
     }
-
+ 
     if (locationId) {
       query += ` AND locationId = ?`;
       countQuery += ` AND locationId = ?`;
       params.push(locationId);
       countParams.push(locationId);
     }
-
+ 
     if (maxPrice && minPrice) {
       query += ` AND buyNowPrice BETWEEN ? AND ?`;
       countQuery += ` AND buyNowPrice BETWEEN ? AND ?`;
@@ -358,14 +359,14 @@ export const getVehicles = async (req, res) => {
       params.push(buyNowPrice);
       countParams.push(buyNowPrice);
     }
-
+ 
     if (year) {
       query += ` AND year = ?`;
       countQuery += ` AND year = ?`;
       params.push(year);
       countParams.push(year);
     }
-
+ 
     if (search) {
       query += ` AND (
         make LIKE ? OR
@@ -387,34 +388,7 @@ export const getVehicles = async (req, res) => {
         countParams.push(searchTerm);
       }
     }
-
-    // const filters = {
-    //   make,
-    //   model,
-    //   series,
-    //   bodyStyle,
-    //   engine,
-    //   transmission,
-    //   driveType,
-    //   fuelType,
-    //   color,
-    // };
-
-    // if(typeof(model) === number){
-    //   await pool.query(`select * from tbl_model where id = ?`,
-    //     [model]
-    //   );
-    // }
-
-    // Object.entries(filters).forEach(([key, value]) => {
-    //   if (value) {
-    //     query += ` AND ${key} = ?`;
-    //     countQuery += ` AND ${key} = ?`;
-    //     params.push(value);
-    //     countParams.push(value);
-    //   }
-    // });
-
+ 
     const filters = {
       make,
       model,
@@ -426,11 +400,10 @@ export const getVehicles = async (req, res) => {
       fuelType,
       color,
     };
-
+ 
     let makeName = make;
     let modelName = model;
-
-    // Resolve make if it's an ID
+ 
     if (make && !isNaN(make)) {
       const [rows] = await pool.query(
         `SELECT brandName FROM tbl_brands WHERE id = ?`,
@@ -440,8 +413,7 @@ export const getVehicles = async (req, res) => {
         makeName = rows[0].brandName;
       }
     }
-
-    // Resolve model if it's an ID
+ 
     if (model && !isNaN(model)) {
       const [rows] = await pool.query(
         `SELECT modelName FROM tbl_model WHERE id = ?`,
@@ -451,12 +423,10 @@ export const getVehicles = async (req, res) => {
         modelName = rows[0].modelName;
       }
     }
-
-    // Use resolved names in filters
+ 
     filters.make = makeName;
     filters.model = modelName;
-
-    // Apply filters dynamically
+ 
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         query += ` AND ${key} = ?`;
@@ -465,50 +435,50 @@ export const getVehicles = async (req, res) => {
         countParams.push(value);
       }
     });
-
+ 
     if (vehicleCondition && vehicleCondition !== "all") {
       query += ` AND vehicleCondition = ?`;
       countQuery += ` AND vehicleCondition = ?`;
       params.push(vehicleCondition);
       countParams.push(vehicleCondition);
     }
-
-    query += ` ORDER BY auctionDate DESC LIMIT ? OFFSET ?`;
+ 
+    if (sortType) {
+      if (sortType === "low") {
+        query += ` ORDER BY buyNowPrice ASC`;
+      } else if (sortType === "high") {
+        query += ` ORDER BY buyNowPrice DESC`;
+      } else if (sortType === "new") {
+        query += ` ORDER BY auctionDate DESC`;
+      } else {
+        query += ` ORDER BY auctionDate DESC`;
+      }
+    } else {
+      query += ` ORDER BY id ASC`;
+    }
+ 
+    query += ` LIMIT ? OFFSET ?`;
     params.push(limit, offset);
-
+ 
     const [vehicles] = await pool.query(query, params);
-
     const [totalVehicles] = await pool.query(countQuery, countParams);
     const total = totalVehicles[0].total;
-
-    // --- Image Processing and Price Formatting (MODIFIED) ---
+ 
     const vehiclesWithImages = await Promise.all(
       vehicles.map(async (vehicle) => {
         const processedVehicle = { ...vehicle };
-
-        // Price formatting (No Change)
         try {
           processedVehicle.buyNowPrice = formatingPrice(vehicle.buyNowPrice);
         } catch (err) {
-          console.warn(
-            `Error formatting buyNowPrice for vehicle ${vehicle.id}:`,
-            err.message
-          );
           processedVehicle.buyNowPrice = null;
         }
         try {
           processedVehicle.currentBid = formatingPrice(vehicle.currentBid);
         } catch (err) {
-          console.warn(
-            `Error formatting currentBid for vehicle ${vehicle.id}:`,
-            err.message
-          );
           processedVehicle.currentBid = null;
         }
-
-        // --- Cloudinary Image URL Generation (NEW LOGIC) ---
+ 
         let imageUrls = [];
-        // Assuming 'vehicle.image' now stores a JSON string of Cloudinary public_ids
         if (processedVehicle.image) {
           try {
             const publicIds = JSON.parse(processedVehicle.image);
@@ -522,43 +492,19 @@ export const getVehicles = async (req, res) => {
                     fetch_format: "auto",
                   });
                 })
-                .filter(Boolean); // Filter out any empty strings if getPhotoUrl returns them for invalid publicIds
-            } else {
-              console.warn(
-                `Vehicle ID ${processedVehicle.id} 'image' field is not an array after JSON.parse. Value:`,
-                processedVehicle.image
-              );
+                .filter(Boolean);
             }
           } catch (e) {
-            console.error(
-              `Failed to parse image public_ids JSON for vehicle ID ${processedVehicle.id}:`,
-              e.message
-            );
-            imageUrls = []; // On JSON parsing failure, ensure imageUrls is empty
+            imageUrls = [];
           }
         }
-
-        processedVehicle.images = imageUrls; // Rename to 'images' for clarity on the frontend
-        delete processedVehicle.image; // Remove the original 'image' field which contained public_ids string
-
+ 
+        processedVehicle.images = imageUrls;
+        delete processedVehicle.image;
         return processedVehicle;
       })
     );
-
-    // Logging for debugging (optional, can be removed in production)
-    if (vehiclesWithImages.length > 0) {
-      console.log(
-        "First vehicle buyNowPrice:",
-        vehiclesWithImages[0]?.buyNowPrice
-      );
-      console.log(
-        "First vehicle currentBid:",
-        vehiclesWithImages[0]?.currentBid
-      );
-      console.log("First vehicle image URLs:", vehiclesWithImages[0]?.images); // See the new URLs
-    }
-
-    // Final response
+ 
     res.status(200).json(vehiclesWithImages);
   } catch (error) {
     console.error("Failed to fetch Vehicles:", error);
