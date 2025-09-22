@@ -4,7 +4,11 @@ import { formatingPrice } from "../utils/priceUtils.js";
 import fsSync from "fs";
 import * as fs from "fs";
 import { imageToBase64 } from "../utils/fileUtils.js";
-import {  uploadPhoto, getPhotoUrl, deleteFileFromCloudinary, } from "../utils/cloudinary.js";
+import {
+  uploadPhoto,
+  getPhotoUrl,
+  deleteFileFromCloudinary,
+} from "../utils/cloudinary.js";
 
 export const checkVehicles = async (req, res) => {
   try {
@@ -95,7 +99,7 @@ export const checkVehicles = async (req, res) => {
 
 export const addVehicle = async (req, res) => {
   const uploadedLocalFilePaths = [];
- 
+
   try {
     const {
       userId,
@@ -114,15 +118,13 @@ export const addVehicle = async (req, res) => {
       vehicleCondition,
       keysAvailable,
       locationId,
-      saleStatus = 'live',
+      saleStatus = "live",
       auctionDate,
       currentBid = 0.0,
       buyNowPrice,
       certifyStatus,
     } = req.body;
- 
-   
- 
+
     // Normalize and validate VIN
     // const normalizedVin = vin?.trim().toUpperCase();
     // if (!normalizedVin || !/^[A-HJ-NPR-Z0-9]{17}$/i.test(normalizedVin)) {
@@ -131,7 +133,7 @@ export const addVehicle = async (req, res) => {
     //     message: 'Invalid or missing VIN (must be 17 alphanumeric characters)',
     //   });
     // }
- 
+
     // Validate required fields
     // const requiredFields = ['year', 'make', 'model', 'vehicleCondition', 'locationId', 'userId'];
     // const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -141,7 +143,7 @@ export const addVehicle = async (req, res) => {
     //     message: `Missing required fields: ${missingFields.join(', ')}`
     //   });
     // }
- 
+
     // Check for existing vehicle
     // const [existingVehicle] = await pool.query(
     //   'SELECT id FROM tbl_vehicles WHERE vin = ?',
@@ -153,40 +155,49 @@ export const addVehicle = async (req, res) => {
     //     message: 'Vehicle with this VIN already exists'
     //   });
     // }
- 
+
     // --- Cloudinary Image Uploads (NEW LOGIC) ---
     const imagePublicIds = [];
-    const filesToUpload = (req.files && req.files.image)
-      ? (Array.isArray(req.files.image) ? req.files.image : [req.files.image])
-      : [];
- 
+    const filesToUpload =
+      req.files && req.files.image
+        ? Array.isArray(req.files.image)
+          ? req.files.image
+          : [req.files.image]
+        : [];
+
     const imagesToProcess = filesToUpload.slice(0, 25);
- 
+
     for (const file of imagesToProcess) {
       try {
         uploadedLocalFilePaths.push(file.path);
- 
-        const { public_id } = await uploadPhoto(file.path, 'vehicle_photos');
+
+        const { public_id } = await uploadPhoto(file.path, "vehicle_photos");
         imagePublicIds.push(public_id);
- 
+
         try {
-            await fs.access(file.path);
-            await fs.unlink(file.path);
-            const index = uploadedLocalFilePaths.indexOf(file.path);
-            if (index > -1) {
-                uploadedLocalFilePaths.splice(index, 1);
-            }
+          await fs.access(file.path);
+          await fs.unlink(file.path);
+          const index = uploadedLocalFilePaths.indexOf(file.path);
+          if (index > -1) {
+            uploadedLocalFilePaths.splice(index, 1);
+          }
         } catch (accessOrUnlinkError) {
- 
-            console.warn(`Could not delete local temp file ${file.path}:`, accessOrUnlinkError.message);
+          console.warn(
+            `Could not delete local temp file ${file.path}:`,
+            accessOrUnlinkError.message
+          );
         }
- 
       } catch (uploadError) {
-        console.error(`Failed to upload image "${file.originalFilename || file.name}" to Cloudinary:`, uploadError.message);
+        console.error(
+          `Failed to upload image "${
+            file.originalFilename || file.name
+          }" to Cloudinary:`,
+          uploadError.message
+        );
       }
     }
     // --- END Cloudinary Image Uploads ---
- 
+
     // Insert vehicle
     const [insertResult] = await pool.query(
       `INSERT INTO tbl_vehicles (
@@ -211,64 +222,72 @@ export const addVehicle = async (req, res) => {
         color,
         parseInt(mileage) || null,
         vehicleCondition,
-        keysAvailable === 'true' || keysAvailable === true,
+        keysAvailable === "true" || keysAvailable === true,
         locationId,
         "live",
         auctionDate || null,
         parseFloat(currentBid) || 0.0,
         parseFloat(buyNowPrice) || null,
         JSON.stringify(imagePublicIds), // Store Cloudinary public_ids as JSON string
-        certifyStatus
+        certifyStatus,
       ]
     );
- 
+
     console.log("this is fucking salestatus", saleStatus);
- 
+
     // Return inserted vehicle
     const [newVehicle] = await pool.query(
-      'SELECT * FROM tbl_vehicles WHERE id = ?',
+      "SELECT * FROM tbl_vehicles WHERE id = ?",
       [insertResult.insertId]
     );
- 
+
     // const realPrice = formatingPrice(buyNowPrice);
     // const priceObj = { buyNowPrice: realPrice };
     // console.log("Formatted Buy Now Price:", priceObj);
- 
+
     // IMPORTANT: For the response, we should also provide the Cloudinary URLs
     const newVehicleWithImages = { ...newVehicle[0] };
-    newVehicleWithImages.images = imagePublicIds.map(publicId =>
-      getPhotoUrl(publicId, { width: 400, crop: 'limit', quality: 'auto' }) // Corrected call here!
+    newVehicleWithImages.images = imagePublicIds.map(
+      (publicId) =>
+        getPhotoUrl(publicId, { width: 400, crop: "limit", quality: "auto" }) // Corrected call here!
     );
     delete newVehicleWithImages.image; // Remove the internal public_ids field from the response
- 
+
     return res.status(201).json({
       success: true,
-      message: 'Vehicle added successfully',
+      message: "Vehicle added successfully",
       ...newVehicleWithImages,
     });
- 
   } catch (error) {
-    console.error('Error adding vehicle:', error);
- 
+    console.error("Error adding vehicle:", error);
+
     // Clean up any temporary files that were uploaded locally but failed to transfer to Cloudinary
     if (uploadedLocalFilePaths.length > 0) {
-      console.log('Cleaning up local temporary files due to error:', uploadedLocalFilePaths);
-      await Promise.all(uploadedLocalFilePaths.map(async (path) => {
-        try {
+      console.log(
+        "Cleaning up local temporary files due to error:",
+        uploadedLocalFilePaths
+      );
+      await Promise.all(
+        uploadedLocalFilePaths.map(async (path) => {
+          try {
             await fs.access(path); // Check if file exists before trying to delete
             await fs.unlink(path);
-        } catch (cleanupError) {
-          // This catch block handles cases where the file might have been deleted by another process
-          // or never existed (e.g., if the initial file.path was bad)
-          console.error(`Failed to clean up local file ${path}:`, cleanupError.message);
-        }
-      }));
+          } catch (cleanupError) {
+            // This catch block handles cases where the file might have been deleted by another process
+            // or never existed (e.g., if the initial file.path was bad)
+            console.error(
+              `Failed to clean up local file ${path}:`,
+              cleanupError.message
+            );
+          }
+        })
+      );
     }
- 
+
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Internal server error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -309,7 +328,6 @@ export const getVehicles = async (req, res) => {
     const params = [];
     const countParams = [];
 
-    // --- Dynamic Query Building (No Change) ---
     if (auctionDateStart && auctionDateEnd) {
       query += ` AND auctionDate BETWEEN ? AND ?`;
       countQuery += ` AND auctionDate BETWEEN ? AND ?`;
@@ -370,6 +388,33 @@ export const getVehicles = async (req, res) => {
       }
     }
 
+    // const filters = {
+    //   make,
+    //   model,
+    //   series,
+    //   bodyStyle,
+    //   engine,
+    //   transmission,
+    //   driveType,
+    //   fuelType,
+    //   color,
+    // };
+
+    // if(typeof(model) === number){
+    //   await pool.query(`select * from tbl_model where id = ?`,
+    //     [model]
+    //   );
+    // }
+
+    // Object.entries(filters).forEach(([key, value]) => {
+    //   if (value) {
+    //     query += ` AND ${key} = ?`;
+    //     countQuery += ` AND ${key} = ?`;
+    //     params.push(value);
+    //     countParams.push(value);
+    //   }
+    // });
+
     const filters = {
       make,
       model,
@@ -381,6 +426,37 @@ export const getVehicles = async (req, res) => {
       fuelType,
       color,
     };
+
+    let makeName = make;
+    let modelName = model;
+
+    // Resolve make if it's an ID
+    if (make && !isNaN(make)) {
+      const [rows] = await pool.query(
+        `SELECT brandName FROM tbl_brands WHERE id = ?`,
+        [make]
+      );
+      if (rows.length > 0) {
+        makeName = rows[0].brandName;
+      }
+    }
+
+    // Resolve model if it's an ID
+    if (model && !isNaN(model)) {
+      const [rows] = await pool.query(
+        `SELECT modelName FROM tbl_model WHERE id = ?`,
+        [model]
+      );
+      if (rows.length > 0) {
+        modelName = rows[0].modelName;
+      }
+    }
+
+    // Use resolved names in filters
+    filters.make = makeName;
+    filters.model = modelName;
+
+    // Apply filters dynamically
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         query += ` AND ${key} = ?`;
@@ -498,7 +574,7 @@ export const updateVehicle = async (req, res) => {
   const uploadedLocalFilePaths = [];
   try {
     const vehicleId = req.params.id;
- 
+
     const {
       userId,
       // vin disabled
@@ -522,35 +598,40 @@ export const updateVehicle = async (req, res) => {
       buyNowPrice,
       certifyStatus,
     } = req.body;
- 
+
     let vcondition = vehicleCondition ? vehicleCondition : "";
     const normalizedAuctionDate = auctionDate || null;
- 
+
     // Check if vehicle exists
     const [vehicleRows] = await pool.query(
       "SELECT * FROM tbl_vehicles WHERE id = ?",
       [vehicleId]
     );
     if (!vehicleRows.length) {
-      return res.status(404).json({ success: false, message: "Vehicle not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Vehicle not found" });
     }
     const vehicle = vehicleRows[0];
- 
+
     // --- Process New Images (Cloudinary) ---
     const imagePublicIds = [];
     // FIXED: Use the same file handling approach as addVehicle
-    const filesToUpload = (req.files && req.files.image)
-      ? (Array.isArray(req.files.image) ? req.files.image : [req.files.image])
-      : [];
+    const filesToUpload =
+      req.files && req.files.image
+        ? Array.isArray(req.files.image)
+          ? req.files.image
+          : [req.files.image]
+        : [];
     const imagesToProcess = filesToUpload.slice(0, 25);
- 
+
     for (const file of imagesToProcess) {
       try {
         uploadedLocalFilePaths.push(file.path);
- 
+
         const { public_id } = await uploadPhoto(file.path, "vehicle_photos");
         imagePublicIds.push(public_id);
- 
+
         try {
           await fs.access(file.path);
           await fs.unlink(file.path);
@@ -563,17 +644,20 @@ export const updateVehicle = async (req, res) => {
         }
       } catch (uploadError) {
         console.error(
-          `Failed to upload image "${file.originalFilename || file.name}" to Cloudinary:`,
+          `Failed to upload image "${
+            file.originalFilename || file.name
+          }" to Cloudinary:`,
           uploadError.message
         );
       }
     }
- 
+
     // If no new images uploaded, keep old ones
-    let finalImagePublicIds = imagePublicIds.length > 0 
-      ? imagePublicIds 
-      : JSON.parse(vehicle.image || "[]");
- 
+    let finalImagePublicIds =
+      imagePublicIds.length > 0
+        ? imagePublicIds
+        : JSON.parse(vehicle.image || "[]");
+
     // --- Update Fields ---
     const updateFields = {
       userId,
@@ -598,29 +682,29 @@ export const updateVehicle = async (req, res) => {
       certifyStatus: certifyStatus || null,
       image: JSON.stringify(finalImagePublicIds),
     };
- 
+
     // Update DB
     await pool.query("UPDATE tbl_vehicles SET ? WHERE id = ?", [
       updateFields,
       vehicleId,
     ]);
- 
+
     const [updatedRows] = await pool.query(
       "SELECT * FROM tbl_vehicles WHERE id = ?",
       [vehicleId]
     );
- 
+
     // Format Buy Now Price
     const realPrice = formatingPrice(buyNowPrice);
     const priceObj = { buyNowPrice: realPrice };
- 
+
     // Build response with Cloudinary URLs
     const updatedVehicleWithImages = { ...updatedRows[0] };
-    updatedVehicleWithImages.images = finalImagePublicIds.map(publicId =>
+    updatedVehicleWithImages.images = finalImagePublicIds.map((publicId) =>
       getPhotoUrl(publicId, { width: 400, crop: "limit", quality: "auto" })
     );
     delete updatedVehicleWithImages.image;
- 
+
     return res.status(200).json({
       success: true,
       message: "Vehicle updated successfully",
@@ -629,7 +713,7 @@ export const updateVehicle = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating vehicle:", error);
- 
+
     // Clean up local temp files if error
     if (uploadedLocalFilePaths.length > 0) {
       await Promise.all(
@@ -643,7 +727,7 @@ export const updateVehicle = async (req, res) => {
         })
       );
     }
- 
+
     return res.status(500).json({
       success: false,
       message: "Failed to update vehicle",
@@ -1139,7 +1223,7 @@ export const todayAuction = async (req, res) => {
       `DATE(b.startTime) = CURDATE()`,
       `v.vehicleStatus = 'Y'`,
       `(u.role = 'seller' OR u.role = 'admin')`,
-      `(b.auctionStatus = 'upcoming' OR b.auctionStatus = 'live')`
+      `(b.auctionStatus = 'upcoming' OR b.auctionStatus = 'live')`,
     ];
 
     let values = [];

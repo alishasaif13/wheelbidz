@@ -826,35 +826,6 @@ export const registerEmailVerification = async (req, res) => {
  
     const hashedPassword = await bcrypt.hash(password, 10);
  
-    // Insert user
-    const [insertResult] = await pool.query(
-      `INSERT INTO tbl_users (
-        name, contact, cnic, address,
-        postcode, email, password, image,
-        date, role
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE(), ?)`,
-      [
-        name,
-        contact,
-        cnic,
-        address,
-        postcode,
-        email,
-        hashedPassword,
-        imagePublicId ? JSON.stringify([imagePublicId]) : null,
-        role
-      ]
-    );
- 
-    const newUserId = insertResult.insertId;
-    const [newUser] = await pool.query("SELECT * FROM tbl_users WHERE id = ?", [newUserId]);
- 
-    const responseUser = { ...newUser[0] };
-    responseUser.imageUrl = imagePublicId ? getPhotoUrl(imagePublicId, {
-      width: 400, crop: 'thumb', quality: 'auto'
-    }) : null;
-    delete responseUser.image;
- 
     // ✅ SendGrid Mail Setup
     if (!process.env.SENDGRID_API_KEY || !process.env.MAIL_USER) {
       throw new Error("SendGrid API key or MAIL_USER not configured");
@@ -916,6 +887,35 @@ export const registerEmailVerification = async (req, res) => {
     await sgMail.send(msg);
     console.log("Verification email sent to:", email);
  
+     // Insert user
+    const [insertResult] = await pool.query(
+      `INSERT INTO tbl_users (
+        name, contact, cnic, address,
+        postcode, email, password, image,
+        date, role
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE(), ?)`,
+      [
+        name,
+        contact,
+        cnic,
+        address,
+        postcode,
+        email,
+        hashedPassword,
+        imagePublicId ? JSON.stringify([imagePublicId]) : null,
+        role
+      ]
+    );
+ 
+    const newUserId = insertResult.insertId;
+    const [newUser] = await pool.query("SELECT * FROM tbl_users WHERE id = ?", [newUserId]);
+ 
+    const responseUser = { ...newUser[0] };
+    responseUser.imageUrl = imagePublicId ? getPhotoUrl(imagePublicId, {
+      width: 400, crop: 'thumb', quality: 'auto'
+    }) : null;
+    delete responseUser.image;
+ 
     res.status(201).send({
       success: true,
       message: "Registration Success! Please check your mail to verify your email!",
@@ -929,6 +929,7 @@ export const registerEmailVerification = async (req, res) => {
     res.status(500).json({ status: 500, message: "Internal Server Error" });
   }
 };
+
 
 
 // export const registerEmailVerification = async (req, res) => {
