@@ -5,7 +5,7 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import { connect as connectSocketIOServer } from "./socket.js";
-// import "./cronJob.js";
+import "./cronJob.js";
 import "./config/passport.js";
 import passport from "passport";
 
