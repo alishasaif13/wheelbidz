@@ -1066,3 +1066,45 @@ export const verifyEmail = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
+
+
+export const updatePassword = async (req, res) => {
+  try {
+    const  id = req.params.id;
+    const { password } = req.body;
+    console
+ 
+    if (!password) {
+      return res.status(400).json({
+        message: "Please provide a new password"
+      });
+    }
+ 
+    const saltRounds = parseInt(process.env.SALT_ROUNDS) || 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+ 
+    const sql = "UPDATE tbl_users SET password = ? WHERE id = ?";
+    const values = [hashedPassword, id];
+ 
+    const [result] = await pool.query(sql, values);
+ 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+ 
+    return res.status(200).json({
+      message: "Password updated successfully",
+      id
+    });
+  } catch (error) {
+    console.error("Error in updatePassword:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+};
+ 

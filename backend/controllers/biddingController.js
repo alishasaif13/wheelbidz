@@ -275,109 +275,82 @@ export const endBidding = async (id) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-
-    console.log("function called");
-
-    // 1. Check if bid exists
-    const [bid] = await connection.query(`SELECT * FROM tbl_bid WHERE id = ?`, [id]);
-    if (bid.length === 0) {
+ 
+    // 1. Check if the bid exists
+    const [bidRows] = await connection.query(
+      `SELECT * FROM tbl_bid WHERE id = ?`,
+      [id]
+    );
+    if (bidRows.length === 0) {
       await connection.rollback();
       return { success: false, message: "Bid not found" };
     }
-
-    const vehicleID = bid[0].vehicleId;
-
-    // 2. Mark bids as completed
-    const [update] = await connection.query(
-      `UPDATE tbl_bid SET bidApprStatus = ? WHERE vehicleId = ?`,
-      ["completed", vehicleID]
+ 
+    const vehicleID = bidRows[0].vehicleId;
+    console.log(vehicleID);
+    // 2. Mark all bids for this vehicle as completed + auction ended
+    await connection.query(
+      `UPDATE tbl_bid
+       SET bidApprStatus = 'completed', auctionStatus = 'end'
+       WHERE vehicleId = ?`,
+      [vehicleID]
     );
-    if (update.affectedRows === 0) {
-      await connection.rollback();
-      return { success: false, message: "Failed to update bids" };
-    }
-
-    // 3. Get the winning customer bid (highest MonsterBid)
-    const [result] = await connection.query(
-      `SELECT b.MonsterBid, b.userId, b.vehicleId, b.id, u.role
+ 
+    // 3. Get the winning bid (highest MonsterBid from customers)
+    const [winnerRows] = await connection.query(
+      `SELECT b.id, b.userId, b.vehicleId, b.MonsterBid, b.maxBid, u.role
        FROM tbl_bid b
        JOIN tbl_users u ON b.userId = u.id
        WHERE b.vehicleId = ?
-         AND b.MonsterBid = (
-           SELECT MAX(MonsterBid)
-           FROM tbl_bid
-           WHERE vehicleId = ?
-         )
-         AND u.role = 'customer'`,
-      [vehicleID, vehicleID]
+         AND u.role = 'customer'
+       ORDER BY b.MonsterBid DESC
+       LIMIT 1`,
+      [vehicleID]
     );
-    if (result.length === 0) {
+ 
+    if (winnerRows.length === 0) {
       await connection.rollback();
       return { success: false, message: "No customer bids found for this vehicle" };
     }
-
-    const winnerId = result[0].userId;
-    const bidId = result[0].id;
-
-    // 4. Mark winner (only this one customer)
+ 
+    const winner = winnerRows[0];
+ 
+    // 4. Mark the winner
     await connection.query(
-      `UPDATE tbl_bid 
-       SET winStatus = 'Won' 
-       WHERE userId = ? AND vehicleId = ? AND id = ?`,
-      [winnerId, vehicleID, bidId]
+      `UPDATE tbl_bid
+       SET winStatus = 'Won', saleStatus = 'sold'
+       WHERE id = ?`,
+      [winner.id]
     );
-
-    // 5. Mark all other CUSTOMERS as "Lost"
+ 
+    // 5. Mark all other customers as Lost
     await connection.query(
       `UPDATE tbl_bid b
        JOIN tbl_users u ON b.userId = u.id
        SET b.winStatus = 'Lost'
-       WHERE b.vehicleId = ? 
-         AND b.userId != ? 
+       WHERE b.vehicleId = ?
+         AND b.id != ?
          AND u.role = 'customer'`,
-      [vehicleID, winnerId]
+      [vehicleID, winner.id]
     );
-
-    // 6. Update auction + vehicle status
+ 
+    // 6. Mark vehicle as sold
     await connection.query(
-      `UPDATE tbl_bid SET auctionStatus = 'end', saleStatus = 'sold' WHERE vehicleId = ?`,
+      `UPDATE tbl_vehicles
+       SET saleStatus = 'sold'
+       WHERE id = ?`,
       [vehicleID]
     );
-    await connection.query(
-      `UPDATE tbl_vehicles SET saleStatus = 'sold' WHERE id = ?`,
-      [vehicleID]
-    );
-
-    // 7. Get winning row
-    const [getWinner] = await connection.query(
-      `SELECT * FROM tbl_bid WHERE vehicleId = ? AND winStatus = 'Won' LIMIT 1`,
-      [vehicleID]
-    );
-    const winnerRow = getWinner[0];
-
-    // 8. Ensure correct maxBid/MonsterBid values
-    if (winnerRow?.maxBid != null) {
-      await connection.query(`UPDATE tbl_bid SET maxBid = ? WHERE id = ?`, [
-        winnerRow.maxBid,
-        winnerRow.id,
-      ]);
-    }
-    if (winnerRow?.MonsterBid != null) {
-      await connection.query(`UPDATE tbl_bid SET monsterBid = ? WHERE id = ?`, [
-        winnerRow.MonsterBid,
-        winnerRow.id,
-      ]);
-    }
-
-    // 9. Join with user details (like API 1)
-    const [finalWinner] = await pool.query(
+ 
+    // 7. Get winner details with user info
+    const [finalWinner] = await connection.query(
       `SELECT b.*, u.name, u.email, u.contact, u.role
        FROM tbl_bid b
        JOIN tbl_users u ON u.id = b.userId
-       WHERE b.vehicleId = ? AND b.winStatus = 'Won'`,
-      [vehicleID]
+       WHERE b.id = ?`,
+      [winner.id]
     );
-
+ 
     await connection.commit();
     return { success: true, winner: finalWinner[0] };
   } catch (error) {
@@ -388,7 +361,6 @@ export const endBidding = async (id) => {
     connection.release();
   }
 };
-
 // export const endBidding = async (req, res) => {
 //   const connection = await pool.getConnection();
 //   try {

@@ -56,7 +56,7 @@ import {
   getVehiclePrices,
   getVehicleSpecs,
 } from "../controllers/featureSpecController.js";
-import { registerByEmailOTP, registerEmailVerification, verifyEmail, verifyOTP } from "../controllers/authController.js";
+import { registerByEmailOTP, registerEmailVerification, updatePassword, verifyEmail, verifyOTP } from "../controllers/authController.js";
 
 const app = express();
 
@@ -147,4 +147,7 @@ export default (app) => {
   app.post('/customer/becomePartnerForm', becomePartnerForm);
 
   app.post('/customer/giveSuggestion', giveSuggestion);
+
+  app.put('/updatePassword/:id', updatePassword);
+ 
 };
