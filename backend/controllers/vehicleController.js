@@ -300,7 +300,7 @@ export const getVehicles = async (req, res) => {
       auctionDateStart,
       auctionDateEnd,
       vehicleCondition,
-      locationId,
+      locationId,  
       make,
       model,
       series,
@@ -324,63 +324,78 @@ export const getVehicles = async (req, res) => {
     const limit = Math.max(1, entry);
     const offset = (Math.max(1, page) - 1) * limit;
  
-    let query = `SELECT * FROM tbl_vehicles WHERE 1=1 AND vehicleStatus = 'Y'`;
-    let countQuery = `SELECT COUNT(*) as total FROM tbl_vehicles WHERE 1=1 AND vehicleStatus = 'Y'`;
+    // ✅ Include tbl_cities join
+    let query = `
+      SELECT v.*, c.cityName
+      FROM tbl_vehicles v
+      LEFT JOIN tbl_cities c ON v.locationId = c.id
+      WHERE v.vehicleStatus = 'Y'
+    `;
+ 
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM tbl_vehicles v
+      LEFT JOIN tbl_cities c ON v.locationId = c.id
+      WHERE v.vehicleStatus = 'Y'
+    `;
+ 
     const params = [];
     const countParams = [];
  
+    // Auction Date filters
     if (auctionDateStart && auctionDateEnd) {
-      query += ` AND auctionDate BETWEEN ? AND ?`;
-      countQuery += ` AND auctionDate BETWEEN ? AND ?`;
+      query += ` AND v.auctionDate BETWEEN ? AND ?`;
+      countQuery += ` AND v.auctionDate BETWEEN ? AND ?`;
       params.push(auctionDateStart, auctionDateEnd);
       countParams.push(auctionDateStart, auctionDateEnd);
     } else if (auctionDate) {
-      query += ` AND auctionDate = ?`;
-      countQuery += ` AND auctionDate = ?`;
+      query += ` AND v.auctionDate = ?`;
+      countQuery += ` AND v.auctionDate = ?`;
       params.push(auctionDate);
       countParams.push(auctionDate);
     }
  
+    // Filter by locationId (numeric only, now matched directly with JOIN)
     if (locationId) {
-      query += ` AND locationId = ?`;
-      countQuery += ` AND locationId = ?`;
+      query += ` AND v.locationId = ?`;
+      countQuery += ` AND v.locationId = ?`;
       params.push(locationId);
       countParams.push(locationId);
     }
  
     if (maxPrice && minPrice) {
-      query += ` AND buyNowPrice BETWEEN ? AND ?`;
-      countQuery += ` AND buyNowPrice BETWEEN ? AND ?`;
+      query += ` AND v.buyNowPrice BETWEEN ? AND ?`;
+      countQuery += ` AND v.buyNowPrice BETWEEN ? AND ?`;
       params.push(minPrice, maxPrice);
       countParams.push(minPrice, maxPrice);
     } else if (buyNowPrice) {
-      query += ` AND buyNowPrice <= ?`;
-      countQuery += ` AND buyNowPrice <= ?`;
+      query += ` AND v.buyNowPrice <= ?`;
+      countQuery += ` AND v.buyNowPrice <= ?`;
       params.push(buyNowPrice);
       countParams.push(buyNowPrice);
     }
  
     if (year) {
-      query += ` AND year = ?`;
-      countQuery += ` AND year = ?`;
+      query += ` AND v.year = ?`;
+      countQuery += ` AND v.year = ?`;
       params.push(year);
       countParams.push(year);
     }
  
     if (search) {
       query += ` AND (
-        make LIKE ? OR
-        model LIKE ? OR
-        series LIKE ? OR
-        bodyStyle LIKE ? OR
-        color LIKE ?
+        v.make LIKE ? OR
+        v.model LIKE ? OR
+        v.series LIKE ? OR
+        v.bodyStyle LIKE ? OR
+        v.color LIKE ?
       )`;
       countQuery += ` AND (
-        make LIKE ? OR
-        model LIKE ? OR
-        series LIKE ? OR
-        bodyStyle LIKE ? OR
-        color LIKE ?
+        v.make LIKE ? OR
+        v.model LIKE ? OR
+        v.series LIKE ? OR
+        v.bodyStyle LIKE ? OR
+        v.color LIKE ?
       )`;
       const searchTerm = `%${search}%`;
       for (let i = 0; i < 5; i++) {
@@ -388,18 +403,6 @@ export const getVehicles = async (req, res) => {
         countParams.push(searchTerm);
       }
     }
- 
-    const filters = {
-      make,
-      model,
-      series,
-      bodyStyle,
-      engine,
-      transmission,
-      driveType,
-      fuelType,
-      color,
-    };
  
     let makeName = make;
     let modelName = model;
@@ -424,37 +427,47 @@ export const getVehicles = async (req, res) => {
       }
     }
  
-    filters.make = makeName;
-    filters.model = modelName;
+    const filters = {
+      make: makeName,
+      model: modelName,
+      series,
+      bodyStyle,
+      engine,
+      transmission,
+      driveType,
+      fuelType,
+      color,
+    };
  
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
-        query += ` AND ${key} = ?`;
-        countQuery += ` AND ${key} = ?`;
+        query += ` AND v.${key} = ?`;
+        countQuery += ` AND v.${key} = ?`;
         params.push(value);
         countParams.push(value);
       }
     });
  
     if (vehicleCondition && vehicleCondition !== "all") {
-      query += ` AND vehicleCondition = ?`;
-      countQuery += ` AND vehicleCondition = ?`;
+      query += ` AND v.vehicleCondition = ?`;
+      countQuery += ` AND v.vehicleCondition = ?`;
       params.push(vehicleCondition);
       countParams.push(vehicleCondition);
     }
  
+    // Sorting
     if (sortType) {
       if (sortType === "low") {
-        query += ` ORDER BY buyNowPrice ASC`;
+        query += ` ORDER BY v.buyNowPrice ASC`;
       } else if (sortType === "high") {
-        query += ` ORDER BY buyNowPrice DESC`;
+        query += ` ORDER BY v.buyNowPrice DESC`;
       } else if (sortType === "new") {
-        query += ` ORDER BY auctionDate DESC`;
+        query += ` ORDER BY v.auctionDate DESC`;
       } else {
-        query += ` ORDER BY auctionDate DESC`;
+        query += ` ORDER BY v.auctionDate DESC`;
       }
     } else {
-      query += ` ORDER BY id ASC`;
+      query += ` ORDER BY v.id ASC`;
     }
  
     query += ` LIMIT ? OFFSET ?`;
@@ -467,14 +480,15 @@ export const getVehicles = async (req, res) => {
     const vehiclesWithImages = await Promise.all(
       vehicles.map(async (vehicle) => {
         const processedVehicle = { ...vehicle };
+ 
         try {
           processedVehicle.buyNowPrice = formatingPrice(vehicle.buyNowPrice);
-        } catch (err) {
+        } catch {
           processedVehicle.buyNowPrice = null;
         }
         try {
           processedVehicle.currentBid = formatingPrice(vehicle.currentBid);
-        } catch (err) {
+        } catch {
           processedVehicle.currentBid = null;
         }
  
@@ -484,28 +498,30 @@ export const getVehicles = async (req, res) => {
             const publicIds = JSON.parse(processedVehicle.image);
             if (Array.isArray(publicIds)) {
               imageUrls = publicIds
-                .map((publicId) => {
-                  return getPhotoUrl(publicId, {
+                .map((publicId) =>
+                  getPhotoUrl(publicId, {
                     width: 800,
                     crop: "limit",
                     quality: "auto",
                     fetch_format: "auto",
-                  });
-                })
+                  })
+                )
                 .filter(Boolean);
             }
-          } catch (e) {
+          } catch {
             imageUrls = [];
           }
         }
  
         processedVehicle.images = imageUrls;
         delete processedVehicle.image;
+ 
         return processedVehicle;
       })
     );
  
     res.status(200).json(vehiclesWithImages);
+ 
   } catch (error) {
     console.error("Failed to fetch Vehicles:", error);
     return res.status(500).json({
@@ -1005,7 +1021,7 @@ export const getVehiclesById = async (req, res) => {
 export const getVehiclesByUser = async (req, res) => {
   try {
     const id = req.params.id;
-
+ 
     const {
       year,
       auctionDate,
@@ -1024,55 +1040,66 @@ export const getVehiclesByUser = async (req, res) => {
       color,
       search,
     } = req.query;
-
+ 
     const defaultLimit = 100000000;
     const defaultPage = 1;
     const entry = parseInt(req.query.entry) || defaultLimit;
     const page = parseInt(req.query.page) || defaultPage;
     const limit = Math.max(1, entry);
     const offset = (Math.max(1, page) - 1) * limit;
-
-    let query = `SELECT id AS newVehicleId,
-      userId, vin, year, make, model, series, bodyStyle, engine, transmission,
-      driveType, fuelType, color, mileage, vehicleCondition, keysAvailable,
-      locationId, saleStatus, auctionDate, currentBid, buyNowPrice,
-      vehicleStatus, image, certifyStatus
-      FROM tbl_vehicles WHERE 1=1 AND vehicleStatus = 'Y'`;
-
-    let countQuery = `SELECT COUNT(*) as total FROM tbl_vehicles WHERE 1=1 AND vehicleStatus = 'Y'`;
+ 
+    let query = `
+      SELECT v.id AS newVehicleId,
+        v.userId, v.vin, v.year, v.make, v.model, v.series, v.bodyStyle,
+        v.engine, v.transmission, v.driveType, v.fuelType, v.color, v.mileage,
+        v.vehicleCondition, v.keysAvailable, v.locationId, c.cityName,
+        v.saleStatus, v.auctionDate, v.currentBid, v.buyNowPrice,
+        v.vehicleStatus, v.image, v.certifyStatus
+      FROM tbl_vehicles v
+      LEFT JOIN tbl_cities c ON v.locationId = c.id
+      WHERE 1=1 AND v.vehicleStatus = 'Y'
+    `;
+ 
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM tbl_vehicles v
+      LEFT JOIN tbl_cities c ON v.locationId = c.id
+      WHERE 1=1 AND v.vehicleStatus = 'Y'
+    `;
+ 
     const params = [];
     const countParams = [];
-
+ 
     // Date filters
     if (auctionDateStart && auctionDateEnd) {
-      query += ` AND auctionDate BETWEEN ? AND ?`;
-      countQuery += ` AND auctionDate BETWEEN ? AND ?`;
+      query += ` AND v.auctionDate BETWEEN ? AND ?`;
+      countQuery += ` AND v.auctionDate BETWEEN ? AND ?`;
       params.push(auctionDateStart, auctionDateEnd);
       countParams.push(auctionDateStart, auctionDateEnd);
     } else if (auctionDate) {
-      query += ` AND auctionDate = ?`;
-      countQuery += ` AND auctionDate = ?`;
+      query += ` AND v.auctionDate = ?`;
+      countQuery += ` AND v.auctionDate = ?`;
       params.push(auctionDate);
       countParams.push(auctionDate);
     }
-
+ 
     // Year filters
     if (yearMin && yearMax) {
-      query += ` AND year BETWEEN ? AND ?`;
-      countQuery += ` AND year BETWEEN ? AND ?`;
+      query += ` AND v.year BETWEEN ? AND ?`;
+      countQuery += ` AND v.year BETWEEN ? AND ?`;
       params.push(yearMin, yearMax);
       countParams.push(yearMin, yearMax);
     } else if (year) {
-      query += ` AND year = ?`;
-      countQuery += ` AND year = ?`;
+      query += ` AND v.year = ?`;
+      countQuery += ` AND v.year = ?`;
       params.push(year);
       countParams.push(year);
     }
-
+ 
     // Search filter
     if (search) {
       const term = `%${search}%`;
-      const fields = ["make", "model", "series", "bodyStyle", "color"];
+      const fields = ["v.make", "v.model", "v.series", "v.bodyStyle", "v.color"];
       const searchClause = fields.map((f) => `${f} LIKE ?`).join(" OR ");
       query += ` AND (${searchClause})`;
       countQuery += ` AND (${searchClause})`;
@@ -1080,7 +1107,7 @@ export const getVehiclesByUser = async (req, res) => {
       params.push(...repeated);
       countParams.push(...repeated);
     }
-
+ 
     // Dynamic filters
     const filters = {
       make,
@@ -1093,24 +1120,24 @@ export const getVehiclesByUser = async (req, res) => {
       fuelType,
       color,
     };
-
+ 
     for (const [key, value] of Object.entries(filters)) {
       if (value) {
-        query += ` AND ${key} = ?`;
-        countQuery += ` AND ${key} = ?`;
+        query += ` AND v.${key} = ?`;
+        countQuery += ` AND v.${key} = ?`;
         params.push(value);
         countParams.push(value);
       }
     }
-
+ 
     // Final user + pagination clauses
-    query += ` AND userId = ? ORDER BY auctionDate DESC LIMIT ? OFFSET ?`;
+    query += ` AND v.userId = ? ORDER BY v.auctionDate DESC LIMIT ? OFFSET ?`;
     params.push(id, limit, offset);
-
+ 
     const [vehicles] = await pool.query(query, params);
     const [countResult] = await pool.query(countQuery, countParams);
     const total = countResult[0]?.total || 0;
-
+ 
     const enrichedVehicles = await Promise.all(
       vehicles.map(async (vehicle) => {
         // Convert Cloudinary public_ids to URLs
@@ -1134,13 +1161,13 @@ export const getVehiclesByUser = async (req, res) => {
             err.message
           );
         }
-
+ 
         // Fetch specifications
         const [specs] = await pool.query(
           `SELECT * FROM tbl_vehicle_specifications WHERE vehicleId = ?`,
           [vehicle.newVehicleId]
         );
-
+ 
         return {
           ...vehicle,
           buyNowPrice: formatingPrice(vehicle.buyNowPrice),
@@ -1149,7 +1176,7 @@ export const getVehiclesByUser = async (req, res) => {
         };
       })
     );
-
+ 
     res.status(200).json(enrichedVehicles);
   } catch (error) {
     console.error("Failed to fetch vehicles by user ID:", error);

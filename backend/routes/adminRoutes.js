@@ -67,18 +67,23 @@ import {
 } from "../controllers/biddingController.js";
 import {
   addBrands,
+  addCity,
   addModel,
   addSeries,
   deleteBrand,
+  deleteCity,
   deleteModel,
   deleteSereis,
   getBrandById,
   getBrands,
+  getCitites,
+  getCititesById,
   getModelById,
   getModels,
   getSeries,
   getSeriesById,
   updateBrands,
+  updateCity,
   updateModel,
   updateSeries,
 } from "../controllers/brandController.js";
@@ -278,4 +283,14 @@ export default (app) => {
   app.get("/admin/getSuggestions", getSuggestions);
 
   app.get("/admin/getPartner", getPartner);
+
+  app.post('/addCity', addCity);
+ 
+  app.get('/getCitites', getCitites);
+ 
+  app.put('/updateCity/:id', updateCity);
+ 
+  app.patch('/deleteCity/:id', deleteCity);
+ 
+  app.get('/getCititesById/:id', getCititesById);
 };
