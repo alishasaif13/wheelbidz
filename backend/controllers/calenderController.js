@@ -102,7 +102,7 @@ export const getCalenderEvents = async (req, res) => {
       let arr = arrLike;
       if (typeof arrLike === "string") {
         try {
-          arr = JSON.parse(arrLike); 
+          arr = JSON.parse(arrLike);
         } catch {
           arr = [arrLike];
         }
