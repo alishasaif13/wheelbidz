@@ -1216,8 +1216,9 @@ export const getVehiclesById = async (req, res) => {
 export const getVehiclesByUser = async (req, res) => {
   try {
     const id = req.params.id;
-
+ 
     const {
+      approval,
       year,
       auctionDate,
       auctionDateStart,
@@ -1235,36 +1236,29 @@ export const getVehiclesByUser = async (req, res) => {
       color,
       search,
     } = req.query;
-
-    const defaultLimit = 100000000;
-    const defaultPage = 1;
-    const entry = parseInt(req.query.entry) || defaultLimit;
-    const page = parseInt(req.query.page) || defaultPage;
-    const limit = Math.max(1, entry);
-    const offset = (Math.max(1, page) - 1) * limit;
-
+ 
     let query = `
       SELECT v.id AS newVehicleId,
         v.userId, v.vin, v.year, v.make, v.model, v.series, v.bodyStyle,
         v.engine, v.transmission, v.driveType, v.fuelType, v.color, v.mileage,
         v.vehicleCondition, v.keysAvailable, v.locationId, c.cityName,
         v.saleStatus, v.auctionDate, v.currentBid, v.buyNowPrice,
-        v.vehicleStatus, v.image, v.certifyStatus
+        v.vehicleStatus, v.image, v.certifyStatus, v.approval
       FROM tbl_vehicles v
       LEFT JOIN tbl_cities c ON v.locationId = c.id
       WHERE 1=1 AND v.vehicleStatus = 'Y'
     `;
-
+ 
     let countQuery = `
       SELECT COUNT(*) as total
       FROM tbl_vehicles v
       LEFT JOIN tbl_cities c ON v.locationId = c.id
       WHERE 1=1 AND v.vehicleStatus = 'Y'
     `;
-
+ 
     const params = [];
     const countParams = [];
-
+ 
     // Date filters
     if (auctionDateStart && auctionDateEnd) {
       query += ` AND v.auctionDate BETWEEN ? AND ?`;
@@ -1277,7 +1271,7 @@ export const getVehiclesByUser = async (req, res) => {
       params.push(auctionDate);
       countParams.push(auctionDate);
     }
-
+ 
     // Year filters
     if (yearMin && yearMax) {
       query += ` AND v.year BETWEEN ? AND ?`;
@@ -1290,7 +1284,7 @@ export const getVehiclesByUser = async (req, res) => {
       params.push(year);
       countParams.push(year);
     }
-
+ 
     // Search filter
     if (search) {
       const term = `%${search}%`;
@@ -1308,7 +1302,7 @@ export const getVehiclesByUser = async (req, res) => {
       params.push(...repeated);
       countParams.push(...repeated);
     }
-
+ 
     // Dynamic filters
     const filters = {
       make,
@@ -1321,7 +1315,7 @@ export const getVehiclesByUser = async (req, res) => {
       fuelType,
       color,
     };
-
+ 
     for (const [key, value] of Object.entries(filters)) {
       if (value) {
         query += ` AND v.${key} = ?`;
@@ -1330,15 +1324,15 @@ export const getVehiclesByUser = async (req, res) => {
         countParams.push(value);
       }
     }
-
-    // Final user + pagination clauses
-    query += ` AND v.userId = ? ORDER BY v.auctionDate DESC LIMIT ? OFFSET ?`;
-    params.push(id, limit, offset);
-
+ 
+    // Final user filter (no pagination)
+    query += ` AND v.userId = ? ORDER BY v.auctionDate DESC`;
+    params.push(id);
+ 
     const [vehicles] = await pool.query(query, params);
     const [countResult] = await pool.query(countQuery, countParams);
     const total = countResult[0]?.total || 0;
-
+ 
     const enrichedVehicles = await Promise.all(
       vehicles.map(async (vehicle) => {
         // Convert Cloudinary public_ids to URLs
@@ -1362,13 +1356,13 @@ export const getVehiclesByUser = async (req, res) => {
             err.message
           );
         }
-
+ 
         // Fetch specifications
         const [specs] = await pool.query(
           `SELECT * FROM tbl_vehicle_specifications WHERE vehicleId = ?`,
           [vehicle.newVehicleId]
         );
-
+ 
         return {
           ...vehicle,
           buyNowPrice: formatingPrice(vehicle.buyNowPrice),
@@ -1377,7 +1371,7 @@ export const getVehiclesByUser = async (req, res) => {
         };
       })
     );
-
+ 
     res.status(200).json(enrichedVehicles);
   } catch (error) {
     console.error("Failed to fetch vehicles by user ID:", error);
